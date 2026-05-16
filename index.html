@@ -38,15 +38,15 @@
     .wrap {
       max-width: 1180px;
       margin: 0 auto;
-      padding: 18px 20px 36px;
+      padding: 12px 20px 30px;
     }
 
     .hero {
       display: grid;
       grid-template-columns: 1.35fr 0.65fr;
-      gap: 16px;
+      gap: 14px;
       align-items: stretch;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
     }
 
     .title-card, .tip-card, .main-card {
@@ -58,19 +58,19 @@
     }
 
     .title-card {
-      padding: 16px 22px;
+      padding: 10px 18px;
       overflow: hidden;
       position: relative;
       display: grid;
       grid-template-columns: auto 1fr;
-      gap: 18px;
+      gap: 14px;
       align-items: center;
-      min-height: 138px;
+      min-height: 96px;
     }
 
     .brand-logo {
-      width: 78px;
-      height: 78px;
+      width: 56px;
+      height: 56px;
       border-radius: 18px;
       background: #ffffff;
       border: 1px solid #dbe3ef;
@@ -84,8 +84,8 @@
     }
 
     .brand-logo img {
-      width: 68px;
-      height: 68px;
+      width: 48px;
+      height: 48px;
       object-fit: contain;
       border-radius: 14px;
     }
@@ -99,20 +99,20 @@
     .title-card::after {
       content: "";
       position: absolute;
-      width: 128px;
-      height: 128px;
+      width: 96px;
+      height: 96px;
       border-radius: 50%;
       background: linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(14, 165, 233, 0.06));
-      right: -36px;
-      top: -48px;
+      right: -28px;
+      top: -38px;
     }
 
     .eyebrow {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       color: var(--primary);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -129,51 +129,51 @@
 
     h1 {
       margin: 0;
-      font-size: clamp(28px, 3.6vw, 44px);
+      font-size: clamp(26px, 3.0vw, 38px);
       line-height: 1.04;
       letter-spacing: -0.05em;
     }
 
     .subtitle {
-      margin: 8px 0 0;
+      margin: 5px 0 0;
       color: var(--muted);
-      font-size: 14px;
-      line-height: 1.45;
+      font-size: 13px;
+      line-height: 1.3;
       max-width: 760px;
     }
 
     .tip-card {
-      padding: 16px 18px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
 
     .tip-card h2 {
-      margin: 0 0 8px;
-      font-size: 16px;
+      margin: 0 0 5px;
+      font-size: 14px;
     }
 
     .tip-card p {
       color: var(--muted);
       margin: 0;
-      line-height: 1.42;
-      font-size: 13px;
+      line-height: 1.28;
+      font-size: 12px;
     }
 
     .badge-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 7px;
-      margin-top: 10px;
+      gap: 6px;
+      margin-top: 6px;
     }
 
     .badge {
-      font-size: 11px;
+      font-size: 10px;
       color: #1e3a8a;
       background: #dbeafe;
       border: 1px solid #bfdbfe;
-      padding: 4px 9px;
+      padding: 3px 8px;
       border-radius: 999px;
       font-weight: 650;
     }
@@ -439,17 +439,17 @@
       </div>
       <div class="tip-card">
         <div>
-          <h2>Recommended for CH32 IAP + OTA</h2>
+          <h2>Recommended for IAP + OTA</h2>
           <p>
             Use this tool to combine files such as <b>IAP.hex</b> and <b>OTA_APP.hex</b>. The tool parses real Intel HEX addresses,
-            checks for overlaps, sorts data by address, and regenerates a valid merged HEX file.
+            removes the EOF line from earlier files, appends the next HEX file, and keeps the original HEX records unchanged.
           </p>
         </div>
         <div class="badge-row">
           <span class="badge">1–5 HEX files</span>
           <span class="badge">Overlap check</span>
           <span class="badge">Local only</span>
-          <span class="badge">CH32 friendly</span>
+          <span class="badge">HEX friendly</span>
         </div>
       </div>
     </section>
@@ -469,12 +469,16 @@
       <div class="controls">
         <div class="options">
           <label class="option-line">
-            <input id="allowOverlap" type="checkbox" />
-            Allow overlapping addresses. Later slots overwrite earlier slots.
+            <input id="sortByAddress" type="checkbox" checked />
+            Sort files by the lowest HEX address before merging. Lower address is placed first.
           </label>
           <label class="option-line">
-            <input id="fillGaps" type="checkbox" />
-            Fill address gaps with 0xFF between the minimum and maximum address.
+            <input id="allowOverlap" type="checkbox" disabled />
+            Simple append mode: remove EOF from earlier files, then append the next HEX file.
+          </label>
+          <label class="option-line">
+            <input id="fillGaps" type="checkbox" disabled />
+            Do not regenerate, sort, or fill address gaps. Keep original HEX line order.
           </label>
           <div class="filename-box">
             <label for="outputName">Output name</label>
@@ -513,6 +517,7 @@
     const fileCountEl = document.getElementById('fileCount');
     const allowOverlapEl = document.getElementById('allowOverlap');
     const fillGapsEl = document.getElementById('fillGaps');
+    const sortByAddressEl = document.getElementById('sortByAddress');
     const outputNameEl = document.getElementById('outputName');
 
     let files = Array(MAX_FILES).fill(null);
@@ -742,37 +747,103 @@
     }
 
     function mergeFiles() {
-      const loaded = files.map((f, idx) => f ? ({ ...f, idx }) : null).filter(Boolean);
+      let loaded = files.map((f, idx) => f ? ({ ...f, idx }) : null).filter(Boolean);
       if (loaded.length === 0) throw new Error('Please load at least one HEX file.');
-      for (const f of loaded) {
-        if (f.error) throw new Error(`${f.name}: ${f.error}`);
-        if (!f.parsed) throw new Error(`${f.name}: not parsed yet.`);
+
+      /*
+        Strict original-line append mode:
+        - Do NOT regenerate Intel HEX records.
+        - Do NOT normalize line endings.
+        - Preserve CRLF/LF as much as possible.
+        - If "Sort by lowest HEX address" is checked, files are ordered by parsed.minAddr.
+        - For every file except the last one, remove only the last EOF content line.
+        - Append the next HEX file immediately after the removed EOF line.
+      */
+
+      if (sortByAddressEl && sortByAddressEl.checked) {
+        loaded.forEach(f => {
+          if (f.error) throw new Error(`${f.name}: ${f.error}`);
+          if (!f.parsed) throw new Error(`${f.name}: not parsed yet.`);
+        });
+
+        loaded = loaded.slice().sort((a, b) => {
+          const aa = (a.parsed && a.parsed.dataBytes > 0) ? a.parsed.minAddr : Number.MAX_SAFE_INTEGER;
+          const bb = (b.parsed && b.parsed.dataBytes > 0) ? b.parsed.minAddr : Number.MAX_SAFE_INTEGER;
+          if (aa !== bb) return aa - bb;
+          return a.idx - b.idx;
+        });
+
+        log(`Merge order by lowest address: ${loaded.map(f => `${f.name}(${hex(f.parsed.minAddr)})`).join(' -> ')}`);
       }
 
-      const allowOverlap = allowOverlapEl.checked;
-      const merged = new Map();
-      const owner = new Map();
-      const overlaps = [];
+      const EOF_RE = /^:00000001FF\s*$/i;
 
-      for (const f of loaded) {
-        for (const [addr, value] of f.parsed.data.entries()) {
-          if (merged.has(addr) && !allowOverlap) {
-            overlaps.push({ addr, prev: owner.get(addr), next: f.name });
-            if (overlaps.length > 20) break;
+      function splitKeepEol(text) {
+        const lines = [];
+        const re = /([^\r\n]*)(\r\n|\n|\r|$)/g;
+        let m;
+        while ((m = re.exec(text)) !== null) {
+          if (m[0] === '') break;
+          lines.push({ body: m[1], eol: m[2] });
+          if (m[2] === '') break;
+        }
+        return lines;
+      }
+
+      function detectEol(text) {
+        if (text.includes('\r\n')) return '\r\n';
+        if (text.includes('\n')) return '\n';
+        if (text.includes('\r')) return '\r';
+        return '\r\n';
+      }
+
+      const output = [];
+
+      loaded.forEach((f, fileIndex) => {
+        if (!f.text || !f.text.trim()) throw new Error(`${f.name}: empty file.`);
+
+        const lines = splitKeepEol(f.text);
+
+        if (fileIndex < loaded.length - 1) {
+          let eofIndex = -1;
+
+          // Search from the bottom, ignoring trailing empty lines.
+          for (let i = lines.length - 1; i >= 0; i--) {
+            if (lines[i].body.trim() === '') continue;
+            if (EOF_RE.test(lines[i].body.trim())) eofIndex = i;
+            break;
+          }
+
+          if (eofIndex >= 0) {
+            // Remove the EOF line and any trailing blank lines after it,
+            // so the next HEX starts exactly where the EOF line was removed.
+            lines.splice(eofIndex);
           } else {
-            merged.set(addr, value);
-            owner.set(addr, f.name);
+            log(`WARNING: ${f.name} has no EOF record to remove.`);
+          }
+
+          // Ensure there is one line break before the next HEX file starts.
+          if (lines.length > 0 && lines[lines.length - 1].eol === '') {
+            lines[lines.length - 1].eol = detectEol(f.text);
           }
         }
-        if (overlaps.length > 20) break;
+
+        output.push(lines.map(l => l.body + l.eol).join(''));
+      });
+
+      let mergedText = output.join('');
+
+      // Final safety check: final merged file should contain exactly one EOF record.
+      const eofMatches = mergedText.match(/^:00000001FF\s*$/gmi) || [];
+      if (eofMatches.length === 0) {
+        const eol = detectEol(loaded[loaded.length - 1].text);
+        if (!mergedText.endsWith('\n') && !mergedText.endsWith('\r')) mergedText += eol;
+        mergedText += ':00000001FF' + eol;
+      } else if (eofMatches.length > 1) {
+        throw new Error(`More than one EOF record remains after merge. Please check the input HEX files.`);
       }
 
-      if (overlaps.length) {
-        const details = overlaps.slice(0, 10).map(o => `${hex(o.addr)}: ${o.prev} overlaps with ${o.next}`).join('\n');
-        throw new Error(`Address overlap detected.\n${details}\n\nEnable overwrite mode only if you are sure this is intentional.`);
-      }
-
-      return generateIntelHex(merged, fillGapsEl.checked);
+      return mergedText;
     }
 
     function downloadText(filename, content) {
